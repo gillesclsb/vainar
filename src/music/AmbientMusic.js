@@ -1,0 +1,13 @@
+class AmbientMusicEngine {
+  constructor(){this.ctx=null;this.master=null;this.started=false;this.playing=false;this.volume=Number(localStorage.getItem("vainaarMusicVolume")??0.22);}
+  ensure(){if(!this.ctx){const A=window.AudioContext||window.webkitAudioContext;this.ctx=new A();this.master=this.ctx.createGain();this.master.gain.value=0;this.master.connect(this.ctx.destination);}}
+  async start(){this.ensure();if(this.ctx.state==="suspended") await this.ctx.resume();if(!this.started){this.pad(55,"sine",.05);this.pad(82.41,"triangle",.025);this.pad(110,"sine",.014);this.noise();this.pulses();this.started=true;}this.playing=true;this.fade(this.volume,1.2);localStorage.setItem("vainaarMusicEnabled","on");}
+  pause(){if(!this.master)return;this.playing=false;this.fade(0,.5);localStorage.setItem("vainaarMusicEnabled","off");}
+  setVolume(v){this.volume=Math.max(0,Math.min(.6,Number(v)));localStorage.setItem("vainaarMusicVolume",String(this.volume));if(this.playing)this.fade(this.volume,.2);}
+  duck(on){if(this.playing)this.fade(on?Math.min(this.volume,.035):this.volume,.5);}
+  fade(v,s){const n=this.ctx.currentTime;this.master.gain.cancelScheduledValues(n);this.master.gain.setValueAtTime(this.master.gain.value,n);this.master.gain.linearRampToValueAtTime(v,n+s);}
+  pad(f,t,g){const o=this.ctx.createOscillator(),a=this.ctx.createGain(),q=this.ctx.createBiquadFilter(),l=this.ctx.createOscillator(),lg=this.ctx.createGain();o.type=t;o.frequency.value=f;q.type="lowpass";q.frequency.value=750;a.gain.value=g;l.frequency.value=.05;lg.gain.value=f*.01;l.connect(lg);lg.connect(o.frequency);o.connect(q);q.connect(a);a.connect(this.master);o.start();l.start();}
+  noise(){const len=this.ctx.sampleRate*2,b=this.ctx.createBuffer(1,len,this.ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*.18;const s=this.ctx.createBufferSource(),f=this.ctx.createBiquadFilter(),g=this.ctx.createGain();s.buffer=b;s.loop=true;f.type="lowpass";f.frequency.value=320;g.gain.value=.018;s.connect(f);f.connect(g);g.connect(this.master);s.start();}
+  pulses(){const notes=[110,123.47,146.83,164.81,196];const run=()=>{const o=this.ctx.createOscillator(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter(),n=this.ctx.currentTime;o.type=Math.random()>.5?"sine":"triangle";o.frequency.value=notes[Math.floor(Math.random()*notes.length)]/2;f.type="lowpass";f.frequency.value=620;g.gain.setValueAtTime(.0001,n);g.gain.linearRampToValueAtTime(.035,n+1.8);g.gain.exponentialRampToValueAtTime(.0001,n+7);o.connect(f);f.connect(g);g.connect(this.master);o.start(n);o.stop(n+7.2);setTimeout(run,6000+Math.random()*7000)};run();}
+}
+export const ambientMusic=new AmbientMusicEngine();
